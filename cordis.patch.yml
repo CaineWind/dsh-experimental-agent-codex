@@ -1,0 +1,13 @@
+# Disable the dsh-base AgentFactory and install the Codex replacement for this profile only.
+- id: agent-loop
+  disabled: true
+
+- insert:
+    - id: agent-codex
+      name: dsh-experimental-agent-codex
+      config:
+        command: codex
+        args: [app-server, --listen, 'stdio://']
+        approvalPolicy: never
+        sandbox: workspace-write
+        disposeGraceMs: 3000
