@@ -140,7 +140,7 @@ Harness 会有意移除 `OPENAI_API_KEY` 等凭据形式的环境变量。通过
 
 创建 thread 时，组装后的 Harness system prompt 会作为 Codex developer instructions 传入，并记录到 `request/header`。桥接器会提供属于所选 AgentFactory 的标准 `provider`、`model` 和 `cwd` prompt 变量。恢复时使用 thread 已有的 instructions。
 
-command、文件修改、permission、用户输入和 MCP elicitation 等交互请求会收到安全的无人值守拒绝响应。默认 `approvalPolicy: never` 避免交互式 approval 往返。
+command、文件修改、permission、用户输入和 MCP elicitation 等交互请求会收到安全的无人值守拒绝响应。默认 `approvalPolicy: never` 避免交互式 approval 往返。因此，在 `workspace-write` 下，请求额外权限的浏览器或 computer-use 工具会被拒绝；受信任的 profile 可以设置 `sandbox: danger-full-access`，这会移除该 thread 的 Codex sandbox。
 
 ## 模型体验
 
