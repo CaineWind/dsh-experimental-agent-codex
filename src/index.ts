@@ -316,5 +316,3 @@ export function apply(ctx: Context, config: Config = {}): void {
   ctx.effect(() => () => factory.dispose(), 'agentCodex.agents()')
   ctx.effect(() => ctx.agents.setFactory(factory), 'agentCodex.setFactory()')
 }
-
-export default apply

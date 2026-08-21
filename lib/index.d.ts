@@ -119,4 +119,4 @@ declare const Config: z<Config>;
 /** Register the Codex bridge as the sole AgentFactory for this composition. */
 declare function apply(ctx: Context, config?: Config): void;
 //#endregion
-export { CodexAgent, CodexAppServerWire, type CodexApprovalPolicy, type CodexSandboxMode, CodexThreadId, Config, apply, apply as default, inject, name };
+export { CodexAgent, CodexAppServerWire, type CodexApprovalPolicy, type CodexSandboxMode, CodexThreadId, Config, apply, inject, name };

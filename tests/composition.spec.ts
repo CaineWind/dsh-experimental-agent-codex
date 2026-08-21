@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
+import Loader from '@deepseek-ai/cordis-plugin-loader'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
@@ -9,7 +10,8 @@ import { describe, expect, it } from 'vitest'
 import * as AgentCodex from '../src/index.ts'
 
 const mockServer = fileURLToPath(new URL('./mock-codex-app-server.mjs', import.meta.url))
-const plugin = Object.assign(AgentCodex.apply, { inject: AgentCodex.inject })
+const loader = Object.create(Loader.prototype) as Loader
+const plugin = loader.unwrapExports(AgentCodex) as typeof AgentCodex
 
 async function harness(): Promise<Context> {
   const ctx = new Context()
@@ -27,6 +29,13 @@ async function harness(): Promise<Context> {
 }
 
 describe('Codex Agent composition', () => {
+  it('keeps the function-plugin namespace intact through Loader normalization', () => {
+    expect('default' in AgentCodex).toBe(false)
+    expect(plugin).toBe(AgentCodex)
+    expect(plugin.inject).toEqual(['agents', 'sessions', 'subprocess', 'systemPrompt'])
+    expect(typeof plugin.apply).toBe('function')
+  })
+
   it('creates through AgentRegistry and emits the standard text-turn projection', async () => {
     const ctx = await harness()
     const id = SessionId('codex-composition')

@@ -152,6 +152,16 @@ Interactive command, file-change, permission, user-input, and MCP elicitation re
 
 ## Troubleshooting
 
+### Startup reports `cannot get property "agents" without inject`
+
+This error means the installed package lost its Cordis injection metadata during Loader normalization. Update the Git dependency and restart the profile:
+
+```sh
+dsh plugin --profile web update dsh-experimental-agent-codex
+```
+
+Run the update for every affected profile. A commit-pinned installation must move its pin to a fixed commit.
+
 ### Codex executable not found
 
 Run `codex --version` in the same environment that starts `dsh`. Configure an absolute `command` path when Codex is outside `PATH`.

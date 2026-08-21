@@ -152,6 +152,16 @@ command、文件修改、permission、用户输入和 MCP elicitation 等交互�
 
 ## 故障排查
 
+### 启动时报错 `cannot get property "agents" without inject`
+
+此错误表示已安装包的 Cordis 注入元数据在 Loader 归一化时丢失。更新 Git 依赖，然后重启 profile：
+
+```sh
+dsh plugin --profile web update dsh-experimental-agent-codex
+```
+
+请对每个受影响的 profile 执行更新。固定 commit 的安装需要将 pin 移到已修复的 commit。
+
 ### 找不到 Codex 可执行文件
 
 在启动 `dsh` 的同一环境中运行 `codex --version`。如果 Codex 不在 `PATH` 中，请配置绝对 `command` 路径。
