@@ -138,7 +138,7 @@ When `command` resolves to a Windows `.cmd` or `.bat` shim, the bridge starts it
 
 One Harness turn maps to one Codex turn. Final-answer deltas become `assistant/chunk`, the assembled answer becomes `assistant/message`, and reported usage becomes standard disjoint `TokenUsage`. Cached input is reported as `cacheReadTokens` and subtracted from uncached `inputTokens`.
 
-The assembled Harness system prompt is supplied as Codex developer instructions when a thread is created and recorded in `request/header`. Resume uses the thread's existing instructions.
+The assembled Harness system prompt is supplied as Codex developer instructions when a thread is created and recorded in `request/header`. The bridge provides the standard `provider`, `model`, and `cwd` prompt variables that belong to the selected AgentFactory. Resume uses the thread's existing instructions.
 
 Interactive command, file-change, permission, user-input, and MCP elicitation requests receive safe unattended refusal responses. The default `approvalPolicy: never` avoids an interactive approval round trip.
 

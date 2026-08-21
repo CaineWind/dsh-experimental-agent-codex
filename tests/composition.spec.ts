@@ -49,7 +49,7 @@ class TestPersistence extends SessionPersistence {
 async function harness(): Promise<Context> {
   const ctx = new Context()
   await ctx.plugin(SessionStore)
-  await ctx.plugin(SystemPrompt, { persona: 'You are the test deployment.' })
+  await ctx.plugin(SystemPrompt, { persona: 'You are the test deployment in {{cwd}}.' })
   await ctx.plugin(AgentRegistry)
   await ctx.plugin(LocalSubprocessRuntime)
   await ctx.plugin(plugin, {
@@ -64,7 +64,7 @@ async function harness(): Promise<Context> {
 async function resumeHarness(session: Session): Promise<Context> {
   const ctx = new Context()
   await ctx.plugin(SessionStore)
-  await ctx.plugin(SystemPrompt, { persona: 'You are the test deployment.' })
+  await ctx.plugin(SystemPrompt, { persona: 'You are the test deployment in {{cwd}}.' })
   await ctx.plugin(AgentRegistry)
   await ctx.plugin(TestPersistence, { session })
   await ctx.plugin(LocalSubprocessRuntime)

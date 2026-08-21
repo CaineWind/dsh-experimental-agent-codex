@@ -339,4 +339,7 @@ export function apply(ctx: Context, config: Config = {}): void {
   const factory = new CodexAgentFactory(ctx, resolved)
   ctx.effect(() => () => factory.dispose(), 'agentCodex.agents()')
   ctx.effect(() => ctx.agents.setFactory(factory), 'agentCodex.setFactory()')
+  ctx.systemPrompt.variable('provider', context => context.agent?.options.provider)
+  ctx.systemPrompt.variable('model', context => context.agent?.options.model)
+  ctx.systemPrompt.variable('cwd', context => context.agent?.session.header.cwd)
 }

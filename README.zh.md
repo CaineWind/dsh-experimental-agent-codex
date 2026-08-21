@@ -138,7 +138,7 @@ Harness 会有意移除 `OPENAI_API_KEY` 等凭据形式的环境变量。通过
 
 一个 Harness turn 对应一个 Codex turn。最终回答 delta 会变成 `assistant/chunk`，组装回答会变成 `assistant/message`，报告的 usage 会变成标准的互斥 `TokenUsage`。缓存输入以 `cacheReadTokens` 记录，并从未缓存的 `inputTokens` 中扣除。
 
-创建 thread 时，组装后的 Harness system prompt 会作为 Codex developer instructions 传入，并记录到 `request/header`。恢复时使用 thread 已有的 instructions。
+创建 thread 时，组装后的 Harness system prompt 会作为 Codex developer instructions 传入，并记录到 `request/header`。桥接器会提供属于所选 AgentFactory 的标准 `provider`、`model` 和 `cwd` prompt 变量。恢复时使用 thread 已有的 instructions。
 
 command、文件修改、permission、用户输入和 MCP elicitation 等交互请求会收到安全的无人值守拒绝响应。默认 `approvalPolicy: never` 避免交互式 approval 往返。
 
