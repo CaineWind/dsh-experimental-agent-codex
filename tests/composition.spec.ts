@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest'
 import * as AgentCodex from '../src/index.ts'
 
 const mockServer = fileURLToPath(new URL('./mock-codex-app-server.mjs', import.meta.url))
+const mockServerCmd = fileURLToPath(new URL('./mock-codex-app-server.cmd', import.meta.url))
 const loader = Object.create(Loader.prototype) as Loader
 const plugin = loader.unwrapExports(AgentCodex) as typeof AgentCodex
 
@@ -92,6 +93,32 @@ describe('Codex Agent composition', () => {
     })).rejects.toThrow()
     expect(ctx.agents.get(SessionId('missing-codex'))).toBeUndefined()
     expect(ctx.sessions.get(SessionId('missing-codex'))).toBeUndefined()
+    await ctx.fiber.dispose()
+  })
+
+  it.runIf(process.platform === 'win32')('starts an npm-style Windows command shim', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(SystemPrompt)
+    await ctx.plugin(AgentRegistry)
+    await ctx.plugin(LocalSubprocessRuntime)
+    await ctx.plugin(plugin, {
+      command: mockServerCmd,
+      args: [],
+      env: {
+        MOCK_CODEX_NODE: process.execPath,
+        MOCK_CODEX_SERVER: mockServer,
+      },
+    })
+
+    const id = SessionId('windows-command-shim')
+    const handle = await ctx.agents.create({
+      sessionId: id,
+      meta: { cwd: process.cwd() },
+    })
+    expect(handle.agent.session.events[0]?.type).toBe('codex/thread-linked')
+
+    await handle.dispose()
     await ctx.fiber.dispose()
   })
 })

@@ -1,4 +1,4 @@
-import "./types-BvOK8Gds.js";
+import "./types-DaVVofvL.js";
 import { Context } from "@deepseek-ai/cordis";
 //#region src/invariant.d.ts
 /** Cordis companion plugin name. */

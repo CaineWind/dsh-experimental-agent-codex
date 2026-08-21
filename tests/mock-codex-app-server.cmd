@@ -1,0 +1,2 @@
+@ECHO off
+"%MOCK_CODEX_NODE%" "%MOCK_CODEX_SERVER%" %*

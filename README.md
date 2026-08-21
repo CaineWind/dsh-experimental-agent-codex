@@ -134,13 +134,31 @@ Never place a literal credential in a committed patch.
 
 Each live Harness Agent owns one app-server process and one durable Codex thread. A fresh Session records `codex/thread-linked` with the thread id and observed app-server version. Codex owns its internal conversation; Harness retains the UI, ACP, inbox, lifecycle, and audit projection.
 
+When `command` resolves to a Windows `.cmd` or `.bat` shim, the bridge starts it through the native `cmd.exe` while retaining the interpreter and its descendants as one managed process tree.
+
 One Harness turn maps to one Codex turn. Final-answer deltas become `assistant/chunk`, the assembled answer becomes `assistant/message`, and reported usage becomes standard disjoint `TokenUsage`. Cached input is reported as `cacheReadTokens` and subtracted from uncached `inputTokens`.
 
 The assembled Harness system prompt is supplied as Codex developer instructions when a thread is created and recorded in `request/header`. Resume uses the thread's existing instructions.
 
 Interactive command, file-change, permission, user-input, and MCP elicitation requests receive safe unattended refusal responses. The default `approvalPolicy: never` avoids an interactive approval round trip.
 
-## Compatibility limits
+## Model Experience
+
+### Codex thread requests
+
+#### What the model sees
+
+Codex receives the assembled Harness system prompt through `thread/start.developerInstructions`. Each later `turn/start.input` receives the admitted user text; Harness tool definitions and later prompt changes are not sent.
+
+#### Token effect
+
+Developer instructions, Codex-owned thread history, and user text consume the Codex context window. The bridge adds no fixed model-visible prose and projects app-server usage into the Harness Session.
+
+#### KV Cache effect
+
+Codex owns cache behavior for its thread. Resume reuses the Codex thread identity, while a new Session creates independent thread state; changing the user-managed Codex model or stored thread state may change cache reuse.
+
+## Known Limitations and Deferred Work
 
 - Codex runs its own built-in and configured MCP tools. Harness `ctx.tools` are not exported, and Codex-internal calls are not projected as Harness `tool/call` and `tool/result` events.
 - The public app-server protocol does not expose every internal model request. The bridge cannot reproduce `agent/request`, `agent/pre-step`, Harness LLM adapters, retries, request reconstruction, or exact request-level KV-cache behavior.
@@ -149,6 +167,7 @@ Interactive command, file-change, permission, user-input, and MCP elicitation re
 - `AgentOptions.model` is sent at thread creation. `provider` labels the Harness projection. `maxTokens` has no app-server equivalent and is not applied.
 - System-prompt changes after thread creation and Harness dynamic tool/context assembly are not synchronized into an existing thread.
 - Only profiles that install this bundle replace their AgentFactory; global defaults remain unchanged.
+- Resume requires the Session's durable `codex/thread-linked` event. A Session created by another AgentFactory has no Codex thread and cannot be continued through this bridge.
 
 ## Troubleshooting
 

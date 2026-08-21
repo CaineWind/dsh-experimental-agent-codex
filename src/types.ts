@@ -5,7 +5,11 @@ import type { Branded } from '@deepseek-ai/dsh-brand'
 /** Opaque thread identity issued and persisted by Codex. */
 export type CodexThreadId = Branded<'CodexThreadId'>
 
-/** Cast a validated non-empty app-server thread id at the wire boundary. */
+/**
+ * Cast a validated non-empty app-server thread id at the wire boundary.
+ * @param value - Non-empty thread id returned by app-server.
+ * @returns The branded durable Codex thread identity.
+ */
 export const CodexThreadId = (value: string): CodexThreadId => value as CodexThreadId
 
 /** Codex sandbox policy fixed when a thread is created. */

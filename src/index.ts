@@ -5,6 +5,7 @@
  */
 
 import type { Context } from '@deepseek-ai/cordis'
+import { extname } from 'node:path'
 import z from '@deepseek-ai/schemastery'
 import type {
   AgentFactory,
@@ -37,6 +38,7 @@ export const inject = ['agents', 'sessions', 'subprocess', 'systemPrompt']
 
 const DEFAULT_COMMAND = 'codex'
 const DEFAULT_ARGS = ['app-server', '--listen', 'stdio://']
+const WINDOWS_COMMAND_INTERPRETER = 'cmd.exe'
 const DEFAULT_DISPOSE_GRACE_MS = 3_000
 
 /** User-owned process selection and Codex thread policy. */
@@ -82,6 +84,11 @@ function abortError(signal: AbortSignal, id: SessionId): Error {
   return signal.reason instanceof Error
     ? signal.reason
     : new Error(`agent-codex: agent "${id}" creation aborted`, { cause: signal.reason })
+}
+
+function isWindowsCommandShim(executable: string): boolean {
+  const extension = extname(executable).toLowerCase()
+  return extension === '.bat' || extension === '.cmd'
 }
 
 async function raceAbort<T>(pending: Promise<T> | T, signal: AbortSignal, id: SessionId): Promise<T> {
@@ -224,8 +231,20 @@ class CodexAgentFactory implements AgentFactory {
         signal,
         id,
       )
+      let argv = [executable, ...this.config.args]
+      if (isWindowsCommandShim(executable)) {
+        const interpreter = await raceAbort(
+          this.ctx.subprocess.resolveExecutable(WINDOWS_COMMAND_INTERPRETER, this.config.env, signal),
+          signal,
+          id,
+        )
+        if (isWindowsCommandShim(interpreter)) {
+          throw new Error('agent-codex: cmd.exe resolved to a command shim instead of a native executable')
+        }
+        argv = [interpreter, '/d', '/s', '/c', executable, ...this.config.args]
+      }
       child = this.ctx.subprocess.spawn({
-        argv: [executable, ...this.config.args],
+        argv,
         cwd,
         env: this.config.env,
         stdio: {

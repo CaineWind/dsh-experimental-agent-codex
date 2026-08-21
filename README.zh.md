@@ -134,13 +134,31 @@ Harness 会有意移除 `OPENAI_API_KEY` 等凭据形式的环境变量。通过
 
 每个活跃 Harness Agent 拥有一个 app-server 进程和一个持久 Codex thread。新 Session 会在 `codex/thread-linked` 中记录 thread id 和已观察 app-server 版本。Codex 负责其内部对话；Harness 保留 UI、ACP、inbox、生命周期和审计投影。
 
+`command` 解析为 Windows `.cmd` 或 `.bat` shim 时，桥接器通过原生 `cmd.exe` 启动它，并将解释器及其后代作为一棵受管进程树。
+
 一个 Harness turn 对应一个 Codex turn。最终回答 delta 会变成 `assistant/chunk`，组装回答会变成 `assistant/message`，报告的 usage 会变成标准的互斥 `TokenUsage`。缓存输入以 `cacheReadTokens` 记录，并从未缓存的 `inputTokens` 中扣除。
 
 创建 thread 时，组装后的 Harness system prompt 会作为 Codex developer instructions 传入，并记录到 `request/header`。恢复时使用 thread 已有的 instructions。
 
 command、文件修改、permission、用户输入和 MCP elicitation 等交互请求会收到安全的无人值守拒绝响应。默认 `approvalPolicy: never` 避免交互式 approval 往返。
 
-## 兼容性限制
+## 模型体验
+
+### Codex thread 请求
+
+#### 模型可见内容
+
+Codex 通过 `thread/start.developerInstructions` 接收组装后的 Harness system prompt。之后每个 `turn/start.input` 会收到准入的用户文本；Harness 工具定义和后续 prompt 变更不会发送给 Codex。
+
+#### Token 影响
+
+Developer instructions、Codex 管理的 thread 历史和用户文本会占用 Codex context window。桥接器不会增加固定的模型可见文本，并将 app-server usage 投影到 Harness Session。
+
+#### KV Cache 影响
+
+Codex 负责其 thread 的 cache 行为。恢复时复用 Codex thread identity，新 Session 则创建独立的 thread 状态；更改用户管理的 Codex model 或已存储 thread 状态可能改变 cache 复用。
+
+## 已知限制与暂缓事项
 
 - Codex 使用自己的内置工具和已配置 MCP 工具。Harness `ctx.tools` 不会导出，Codex 内部调用也不会投影为 Harness `tool/call` 和 `tool/result` 事件。
 - 公开 app-server 协议不会暴露每次内部模型请求。桥接器无法复刻 `agent/request`、`agent/pre-step`、Harness LLM adapter、retry、请求重建或精确的请求级 KV-cache 行为。
@@ -149,6 +167,7 @@ command、文件修改、permission、用户输入和 MCP elicitation 等交互�
 - 创建 thread 时会发送 `AgentOptions.model`。`provider` 用于标记 Harness 投影。`maxTokens` 没有 app-server 对应字段，因此不会应用。
 - thread 创建后的 system-prompt 变更以及 Harness 动态 tool／context assembly 不会同步到已有 thread。
 - 只有安装此 bundle 的 profile 才会替换 AgentFactory；全局默认值不变。
+- 恢复 Session 需要持久化的 `codex/thread-linked` 事件。由其他 `AgentFactory` 创建的 Session 没有 Codex thread，不能通过本桥接器继续。
 
 ## 故障排查
 

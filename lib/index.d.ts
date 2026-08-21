@@ -1,4 +1,4 @@
-import { n as CodexSandboxMode, r as CodexThreadId, t as CodexApprovalPolicy } from "./types-BvOK8Gds.js";
+import { n as CodexSandboxMode, r as CodexThreadId, t as CodexApprovalPolicy } from "./types-DaVVofvL.js";
 import z from "@deepseek-ai/schemastery";
 import { Agent, AgentCancelCause, AgentOptions, AgentStatus, CancelOptions, Inbox, InboxTarget } from "@deepseek-ai/dsh-agent";
 import { Session, SessionId, UserMessage } from "@deepseek-ai/dsh-session";
@@ -39,15 +39,38 @@ declare class CodexAppServerWire {
   constructor(input: Readable, output: Writable);
   /** Begin reading app-server frames. */
   start(): void;
-  /** Perform the required initialize/initialized handshake and return the observed server version. */
+  /**
+   * Perform the required initialize/initialized handshake.
+   * @param signal - Cancels the handshake and pending protocol request.
+   * @returns The app-server version, or `unknown` when the server omits it.
+   */
   initialize(signal: AbortSignal): Promise<string>;
-  /** Create and retain a durable Codex thread. */
+  /**
+   * Create and retain a durable Codex thread.
+   * @param options - Thread workspace, policy, model, and developer instructions.
+   * @param signal - Cancels the thread creation request.
+   * @returns The durable thread identity returned by app-server.
+   */
   startThread(options: StartThreadOptions, signal: AbortSignal): Promise<CodexThreadId>;
-  /** Resume one user-managed Codex thread and verify its identity. */
+  /**
+   * Resume one user-managed Codex thread and verify its identity.
+   * @param threadId - Durable Codex thread identity recorded by Harness.
+   * @param signal - Cancels the resume request.
+   */
   resumeThread(threadId: CodexThreadId, signal: AbortSignal): Promise<void>;
-  /** Start one text turn and await its authoritative terminal notification. */
+  /**
+   * Start one text turn and await its authoritative terminal notification.
+   * @param texts - Ordered non-empty user text blocks for the turn.
+   * @param observer - Receives final-answer deltas and latest token usage.
+   * @param signal - Cancels the active turn wait.
+   * @returns Terminal turn status, assembled text, and optional usage.
+   */
   runTurn(texts: readonly string[], observer: CodexTurnObserver, signal: AbortSignal): Promise<CodexTurnResult>;
-  /** Add user text to the active Codex turn. */
+  /**
+   * Add user text to the active Codex turn.
+   * @param texts - Ordered non-empty user text blocks to steer with.
+   * @param signal - Cancels the steering request.
+   */
   steer(texts: readonly string[], signal: AbortSignal): Promise<void>;
   /** Best-effort interruption of the active remote turn. */
   interrupt(): void;
@@ -70,6 +93,7 @@ declare class CodexAgent implements Agent {
   readonly session: Session;
   private readonly wire;
   readonly inbox: Inbox;
+  /** Per-Agent registration scope disposed with the Agent handle. */
   readonly scope: Scope;
   readonly ctx: Context;
   private readonly dispatch;

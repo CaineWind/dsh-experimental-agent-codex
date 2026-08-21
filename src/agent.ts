@@ -54,6 +54,7 @@ function messageTexts(messages: readonly UserMessage[]): string[] {
 /** One live Harness Agent backed by one Codex thread and app-server process. */
 export class CodexAgent implements Agent {
   readonly inbox: Inbox
+  /** Per-Agent registration scope disposed with the Agent handle. */
   readonly scope: Scope
   readonly ctx: Context
   private readonly dispatch: AgentEventDispatch
