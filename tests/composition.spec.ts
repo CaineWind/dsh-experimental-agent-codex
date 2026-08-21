@@ -3,7 +3,7 @@ import { Context } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
-import SessionStore, { Session, SessionId } from '@deepseek-ai/dsh-session'
+import SessionStore, { KNOWN_SESSION_EVENT_TYPES, Session, SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionEvent, SessionHeader } from '@deepseek-ai/dsh-session'
 import SessionPersistence from '@deepseek-ai/dsh-session-persistence'
 import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
@@ -78,6 +78,15 @@ async function resumeHarness(session: Session): Promise<Context> {
 }
 
 describe('Codex Agent composition', () => {
+  it('registers its external event type only while the plugin is mounted', async () => {
+    const knownBefore = KNOWN_SESSION_EVENT_TYPES.has('codex/thread-linked')
+    const ctx = await harness()
+    expect(KNOWN_SESSION_EVENT_TYPES.has('codex/thread-linked')).toBe(true)
+
+    await ctx.fiber.dispose()
+    expect(KNOWN_SESSION_EVENT_TYPES.has('codex/thread-linked')).toBe(knownBefore)
+  })
+
   it('keeps the function-plugin namespace intact through Loader normalization', () => {
     expect('default' in AgentCodex).toBe(false)
     expect(plugin).toBe(AgentCodex)

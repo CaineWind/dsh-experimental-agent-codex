@@ -17,7 +17,7 @@ import type {
   SessionStartSource,
 } from '@deepseek-ai/dsh-agent'
 import { emitAgentEvent } from '@deepseek-ai/dsh-agent'
-import { canonicalHeader, SessionPreparation, type SessionId } from '@deepseek-ai/dsh-session'
+import { canonicalHeader, KNOWN_SESSION_EVENT_TYPES, SessionPreparation, type SessionId } from '@deepseek-ai/dsh-session'
 import type { SubprocessHandle } from '@deepseek-ai/dsh-subprocess'
 import { assembleContextFor } from '@deepseek-ai/dsh-agent'
 import { renderPrompt } from '@deepseek-ai/dsh-system-prompt'
@@ -40,6 +40,7 @@ const DEFAULT_COMMAND = 'codex'
 const DEFAULT_ARGS = ['app-server', '--listen', 'stdio://']
 const WINDOWS_COMMAND_INTERPRETER = 'cmd.exe'
 const DEFAULT_DISPOSE_GRACE_MS = 3_000
+const CODEX_THREAD_LINK_EVENT = 'codex/thread-linked'
 
 /** User-owned process selection and Codex thread policy. */
 export interface Config {
@@ -89,6 +90,16 @@ function abortError(signal: AbortSignal, id: SessionId): Error {
 function isWindowsCommandShim(executable: string): boolean {
   const extension = extname(executable).toLowerCase()
   return extension === '.bat' || extension === '.cmd'
+}
+
+function registerCodexSessionEventType(): () => void {
+  if (KNOWN_SESSION_EVENT_TYPES.has(CODEX_THREAD_LINK_EVENT)) return () => {}
+  const mutable = KNOWN_SESSION_EVENT_TYPES as Set<string>
+  if (typeof mutable.add !== 'function' || typeof mutable.delete !== 'function') {
+    throw new Error('agent-codex: this Harness cannot register external Session event types')
+  }
+  mutable.add(CODEX_THREAD_LINK_EVENT)
+  return () => { mutable.delete(CODEX_THREAD_LINK_EVENT) }
 }
 
 async function raceAbort<T>(pending: Promise<T> | T, signal: AbortSignal, id: SessionId): Promise<T> {
@@ -336,6 +347,7 @@ export function apply(ctx: Context, config: Config = {}): void {
   if (!Number.isFinite(resolved.disposeGraceMs) || resolved.disposeGraceMs <= 0) {
     throw new Error('agent-codex: disposeGraceMs must be positive and finite')
   }
+  ctx.effect(() => registerCodexSessionEventType(), 'agentCodex.sessionEventType()')
   const factory = new CodexAgentFactory(ctx, resolved)
   ctx.effect(() => () => factory.dispose(), 'agentCodex.agents()')
   ctx.effect(() => ctx.agents.setFactory(factory), 'agentCodex.setFactory()')

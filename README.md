@@ -132,7 +132,7 @@ Never place a literal credential in a committed patch.
 
 ## Runtime behavior
 
-Each live Harness Agent owns one app-server process and one durable Codex thread. A fresh Session records `codex/thread-linked` with the thread id and observed app-server version. A persisted blank Session with no `turn/start` can be adopted after an AgentFactory change: the bridge creates and records its first Codex thread before accepting the first prompt. Codex owns its internal conversation; Harness retains the UI, ACP, inbox, lifecycle, and audit projection.
+Each live Harness Agent owns one app-server process and one durable Codex thread. A fresh Session records `codex/thread-linked` with the thread id and observed app-server version. While mounted, the bridge registers that external event type with the current Harness process so persistence can reload the Session. A persisted blank Session with no `turn/start` can be adopted after an AgentFactory change: the bridge creates and records its first Codex thread before accepting the first prompt. Codex owns its internal conversation; Harness retains the UI, ACP, inbox, lifecycle, and audit projection.
 
 When `command` resolves to a Windows `.cmd` or `.bat` shim, the bridge starts it through the native `cmd.exe` while retaining the interpreter and its descendants as one managed process tree.
 

@@ -132,7 +132,7 @@ Harness 会有意移除 `OPENAI_API_KEY` 等凭据形式的环境变量。通过
 
 ## 运行时行为
 
-每个活跃 Harness Agent 拥有一个 app-server 进程和一个持久 Codex thread。新 Session 会在 `codex/thread-linked` 中记录 thread id 和已观察 app-server 版本。没有 `turn/start` 的持久化空白 Session 可在更换 AgentFactory 后被接管：桥接器会先创建并记录其第一个 Codex thread，再接受第一条 prompt。Codex 负责其内部对话；Harness 保留 UI、ACP、inbox、生命周期和审计投影。
+每个活跃 Harness Agent 拥有一个 app-server 进程和一个持久 Codex thread。新 Session 会在 `codex/thread-linked` 中记录 thread id 和已观察 app-server 版本。桥接器挂载期间会向当前 Harness 进程注册此外部事件类型，使持久层能够重新加载 Session。没有 `turn/start` 的持久化空白 Session 可在更换 AgentFactory 后被接管：桥接器会先创建并记录其第一个 Codex thread，再接受第一条 prompt。Codex 负责其内部对话；Harness 保留 UI、ACP、inbox、生命周期和审计投影。
 
 `command` 解析为 Windows `.cmd` 或 `.bat` shim 时，桥接器通过原生 `cmd.exe` 启动它，并将解释器及其后代作为一棵受管进程树。
 
