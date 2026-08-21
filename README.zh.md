@@ -132,7 +132,7 @@ Harness 会有意移除 `OPENAI_API_KEY` 等凭据形式的环境变量。通过
 
 ## 运行时行为
 
-每个活跃 Harness Agent 拥有一个 app-server 进程和一个持久 Codex thread。新 Session 会在 `codex/thread-linked` 中记录 thread id 和已观察 app-server 版本。Codex 负责其内部对话；Harness 保留 UI、ACP、inbox、生命周期和审计投影。
+每个活跃 Harness Agent 拥有一个 app-server 进程和一个持久 Codex thread。新 Session 会在 `codex/thread-linked` 中记录 thread id 和已观察 app-server 版本。没有 `turn/start` 的持久化空白 Session 可在更换 AgentFactory 后被接管：桥接器会先创建并记录其第一个 Codex thread，再接受第一条 prompt。Codex 负责其内部对话；Harness 保留 UI、ACP、inbox、生命周期和审计投影。
 
 `command` 解析为 Windows `.cmd` 或 `.bat` shim 时，桥接器通过原生 `cmd.exe` 启动它，并将解释器及其后代作为一棵受管进程树。
 
@@ -167,7 +167,7 @@ Codex 负责其 thread 的 cache 行为。恢复时复用 Codex thread identity�
 - 创建 thread 时会发送 `AgentOptions.model`。`provider` 用于标记 Harness 投影。`maxTokens` 没有 app-server 对应字段，因此不会应用。
 - thread 创建后的 system-prompt 变更以及 Harness 动态 tool／context assembly 不会同步到已有 thread。
 - 只有安装此 bundle 的 profile 才会替换 AgentFactory；全局默认值不变。
-- 恢复 Session 需要持久化的 `codex/thread-linked` 事件。由其他 `AgentFactory` 创建的 Session 没有 Codex thread，不能通过本桥接器继续。
+- 在其他 `AgentFactory` 下已开始对话的 Session 没有 Codex thread，因此不能通过本桥接器继续。空白 Session 没有需要跨 runtime 继承的 turn 历史，可以被安全接管。
 
 ## 故障排查
 

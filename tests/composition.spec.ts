@@ -3,7 +3,9 @@ import { Context } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
-import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
+import SessionStore, { Session, SessionId } from '@deepseek-ai/dsh-session'
+import type { SessionEvent, SessionHeader } from '@deepseek-ai/dsh-session'
+import SessionPersistence from '@deepseek-ai/dsh-session-persistence'
 import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import { describe, expect, it } from 'vitest'
@@ -14,11 +16,57 @@ const mockServerCmd = fileURLToPath(new URL('./mock-codex-app-server.cmd', impor
 const loader = Object.create(Loader.prototype) as Loader
 const plugin = loader.unwrapExports(AgentCodex) as typeof AgentCodex
 
+interface TestPersistenceConfig {
+  readonly session: Session
+}
+
+class TestPersistence extends SessionPersistence {
+  static inject = ['sessions']
+  override readonly supportsRawArtifacts = false
+
+  constructor(ctx: Context, private readonly config: TestPersistenceConfig) {
+    super(ctx)
+  }
+
+  locate(_meta: SessionHeader): undefined { return undefined }
+  create(_meta: SessionHeader): Promise<void> { return Promise.resolve() }
+  append(_id: SessionId, _events: readonly SessionEvent[]): Promise<void> { return Promise.resolve() }
+  load(id: SessionId): Promise<{ meta: SessionHeader; events: SessionEvent[] }> {
+    if (id !== this.config.session.id) return Promise.reject(new Error(`unknown test session ${id}`))
+    return Promise.resolve({
+      meta: structuredClone(this.config.session.header),
+      events: structuredClone([...this.config.session.events]),
+    })
+  }
+  inspect(id: SessionId): Promise<{ meta: SessionHeader; events: SessionEvent[] }> { return this.load(id) }
+  readFrom(id: SessionId, fromSeq: number): Promise<{ meta: SessionHeader; events: SessionEvent[] }> {
+    return this.load(id).then(loaded => ({ ...loaded, events: loaded.events.slice(fromSeq) }))
+  }
+  list(): Promise<SessionHeader[]> { return Promise.resolve([structuredClone(this.config.session.header)]) }
+  listSnapshots(): Promise<never[]> { return Promise.resolve([]) }
+}
+
 async function harness(): Promise<Context> {
   const ctx = new Context()
   await ctx.plugin(SessionStore)
   await ctx.plugin(SystemPrompt, { persona: 'You are the test deployment.' })
   await ctx.plugin(AgentRegistry)
+  await ctx.plugin(LocalSubprocessRuntime)
+  await ctx.plugin(plugin, {
+    command: process.execPath,
+    args: [mockServer],
+    approvalPolicy: 'never',
+    sandbox: 'workspace-write',
+  })
+  return ctx
+}
+
+async function resumeHarness(session: Session): Promise<Context> {
+  const ctx = new Context()
+  await ctx.plugin(SessionStore)
+  await ctx.plugin(SystemPrompt, { persona: 'You are the test deployment.' })
+  await ctx.plugin(AgentRegistry)
+  await ctx.plugin(TestPersistence, { session })
   await ctx.plugin(LocalSubprocessRuntime)
   await ctx.plugin(plugin, {
     command: process.execPath,
@@ -119,6 +167,54 @@ describe('Codex Agent composition', () => {
     expect(handle.agent.session.events[0]?.type).toBe('codex/thread-linked')
 
     await handle.dispose()
+    await ctx.fiber.dispose()
+  })
+
+  it('adopts a persisted blank Session created before the Codex factory was selected', async () => {
+    const id = SessionId('blank-before-codex')
+    const stored = Session.create(id, undefined, {
+      version: 0,
+      id,
+      createdAt: Date.now(),
+      cwd: process.cwd(),
+    })
+    const ctx = await resumeHarness(stored)
+
+    const handle = await ctx.agents.resume({ resumeSessionId: id })
+    expect(handle.agent.session.events.map(event => event.type)).toEqual([
+      'session/end-seed',
+      'codex/thread-linked',
+      'request/header',
+    ])
+
+    handle.agent.followup(createUserMessage({
+      content: [{ type: 'text', text: 'hello after adoption' }],
+      source: { kind: 'user' },
+    }))
+    await handle.agent.whenIdle()
+    expect(handle.agent.session.events.find(event => event.type === 'assistant/message')?.data.message.content)
+      .toEqual([{ type: 'text', text: 'mock Codex response' }])
+
+    await handle.dispose()
+    await ctx.fiber.dispose()
+  })
+
+  it('refuses to adopt a Session whose conversation has started without Codex', async () => {
+    const id = SessionId('nonblank-before-codex')
+    const stored = Session.create(id, undefined, {
+      version: 0,
+      id,
+      createdAt: Date.now(),
+      cwd: process.cwd(),
+    })
+    stored.append('turn/start', { turn: 1 })
+    stored.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
+    const ctx = await resumeHarness(stored)
+
+    await expect(ctx.agents.resume({ resumeSessionId: id }))
+      .rejects.toThrow(`agent-codex: session "${id}" started without a codex/thread-linked event and cannot be adopted`)
+    expect(ctx.agents.get(id)).toBeUndefined()
+    expect(ctx.sessions.get(id)).toBeUndefined()
     await ctx.fiber.dispose()
   })
 })

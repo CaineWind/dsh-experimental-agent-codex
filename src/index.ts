@@ -267,7 +267,11 @@ class CodexAgentFactory implements AgentFactory {
 
       wire.start()
       const appServerVersion = await wire.initialize(signal)
-      if (source === 'startup') {
+      const link = session.events.findLast(event => event.type === 'codex/thread-linked')
+      const adoptBlankSession = source === 'resume'
+        && link === undefined
+        && !session.events.some(event => event.type === 'turn/start')
+      if (source === 'startup' || adoptBlankSession) {
         const assembly = await this.ctx.systemPrompt.assemble(assembleContextFor(agent, signal))
         const developerInstructions = renderPrompt(assembly)
         const threadId = await wire.startThread({
@@ -289,9 +293,10 @@ class CodexAgentFactory implements AgentFactory {
           reason: session.requestHeader() === undefined ? 'initial' : 'change',
         })
       } else {
-        const link = session.events.findLast(event => event.type === 'codex/thread-linked')
         if (link === undefined) {
-          throw new Error(`agent-codex: session "${id}" has no codex/thread-linked event`)
+          throw new Error(
+            `agent-codex: session "${id}" started without a codex/thread-linked event and cannot be adopted`,
+          )
         }
         await wire.resumeThread(link.data.threadId, signal)
       }
